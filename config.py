@@ -1,16 +1,22 @@
 import os
 
-MAIN_DIR = os.getcwd()
-PRESENT_DIR = os.path.join(MAIN_DIR, 'presentations')
+def create_message_presentation() -> str:
+    message_presentation = ''
+    counter = 1
+    for pres in LIST_PRES:
+        message_presentation += f'[{counter}] - {pres}\n'
+        counter += 1
+    return message_presentation
 
-start_message = 'Для взаимодействия с нашим умным\nботом нажмите на интересующий Вас\nпункт меню ниже'
-presentations = os.listdir(PRESENT_DIR)
-talks_message = 'Ведущие инфекционисты, педиатры и отоларингологи:\nёмко и по делу о мифах, клинической базе\nи опытеп применения Полиоксидония'
-url_youtube = 'https://www.youtube.com/watch?v=IMs2W8IlfvM'
-# При запуске генерирует сообщение для вывода презентаций
-message_pres = ''
-counter = 1
-for pres in presentations:
-    message_pres += f'[{counter}] - {pres}\n'
-    counter += 1
-del counter
+# TOKEN = os.environ.get('TOKEN_TELEGRAM')
+TOKEN = '6145310970:AAFV4_w-r9jKO1pkf4EpXonGqABrfEUWgrM'
+MAIN_DIR = os.getcwd()
+SOURCE_DIR = os.path.join(MAIN_DIR, 'sources')
+LIST_PRES = os.listdir(SOURCE_DIR)
+message_pres = create_message_presentation()
+
+CREDENTIALS_FILE = 'credentials.json' 
+spreadsheetId = '18Pps6sDbv4AqDyy2QyXLrW1Ext4Aun8G9eAN6roQf6M'
+sheetId = 0 
+
+
