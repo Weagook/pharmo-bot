@@ -36,8 +36,8 @@ async def callback_controller(callback: types.CallbackQuery):
         )
 
 async def getting_question(message: types.Message, state: FSMContext):
-    print('Работает функция getting_question')
-    result = sheets.database_search(message.text)
+    result = await sheets.read_google_sheet(checked_object=message.text, revise=True)
+    await sheets.give_access_sheet()
     if result:
         await message.answer(result)
     else:
@@ -52,10 +52,31 @@ async def choice_of_actions(message: types.Message, state: FSMContext):
     elif message.text == 'Связаться с специалистом':
         await message.answer('В ближайшее время специалист свяжется с вами. Не перезагружайте бота!')
     
-    
+async def giveAccesSheet(message: types.Message):
+    try:
+        await state.finish()
+    except NameError:
+        pass
+    await message.answer('Пожалуйста, напишите google почту пользователя, которому нужно выдать доступ. Пример: test_company@gmail.com')
+    await models.GiveAccessSheet.ENTRY_STATE.set()
+
+async def collection_email_access(message: types.Message):
+    email = message.text.lower().replace(' ', '')
+    if email.endswith('@gmail.com'):
+        await sheets.give_access_sheet(email)
+        await message.answer('Доступ выдан!')
+        try:
+            await state.finish()
+        except NameError:
+            pass
+    else:
+        await message.answer('Неккоретный email. Попробуйте еще раз.')
+
 
 def register_handlers_user(dp: Dispatcher) -> None:
     dp.register_message_handler(launch, commands=['start'], state='*')
+    dp.register_message_handler(giveAccesSheet, commands=['access'], state='*')
+    dp.register_message_handler(collection_email_access, state=models.GiveAccessSheet.ENTRY_STATE)
     dp.register_message_handler(getting_question, state=models.KnowledgeBase.ENTRY_STATE)
     dp.register_message_handler(choice_of_actions, state=models.KnowledgeBase.GET_RESPONSE)
     dp.register_message_handler(message_controller)

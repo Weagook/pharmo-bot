@@ -7,3 +7,6 @@ class KnowledgeBase(StatesGroup):
 class ConnectOperator(StatesGroup):
     WAITING = State()
     CONNECT = State()
+
+class GiveAccessSheet(StatesGroup):
+    ENTRY_STATE = State()

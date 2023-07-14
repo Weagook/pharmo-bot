@@ -1,32 +1,34 @@
-import httplib2 
-import apiclient.discovery
-from oauth2client.service_account import ServiceAccountCredentials
-from config import CREDENTIALS_FILE, spreadsheetId, sheetId
+import asyncio
+import gspread_asyncio
+from google.oauth2.service_account import Credentials
+from config import CREDENTIALS_FILE, SPREADSHEET_NAME, SCOPES, SPREADSHEET_ID
 
-credentials = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'])
-httpAuth = credentials.authorize(httplib2.Http()) # Авторизуемся в системе
-service = apiclient.discovery.build('sheets', 'v4', http = httpAuth)
+def get_creds():
+    creds = Credentials.from_service_account_file(CREDENTIALS_FILE)
+    scoped = creds.with_scopes(SCOPES)
+    return scoped
 
-def give_acces(email) -> None:
-    '''Выдача доступа'''
-    driveService = apiclient.discovery.build('drive', 'v3', http = httpAuth) # Выбираем работу с Google Drive и 3 версию API
-    access = driveService.permissions().create(
-        fileId = spreadsheetId,
-        body = {'type': 'user', 'role': 'writer', 'emailAddress': email},  # Открываем доступ на редактирование
-        fields = 'id'
-    ).execute()
+agcm = gspread_asyncio.AsyncioGspreadClientManager(get_creds)
 
-def get_data() -> list:
-    result = service.spreadsheets().values().get(
-    spreadsheetId=spreadsheetId,
-    range='Главный лист!A2:B100' 
-    ).execute()
-    return result
+async def read_google_sheet(checked_object: str, revise: bool = False) -> str or bool:
+    agc = await agcm.authorize()
+    current_sheet = await agc.open_by_key(SPREADSHEET_ID)
+    current_tab = await current_sheet.get_worksheet(0)
+    data = await current_tab.batch_get(['A2:B100'])
+    if revise:
+        checked_object = checked_object.lower().replace(',', '').replace('?', '').replace('!', '').replace(' ', '')
+        for row in data[0]:
+            if row[0].lower().replace(',', '').replace('?', '').replace('!', '').replace(' ', '') == checked_object:
+                return row[1]
+        return False
+    return data
 
-def database_search(request) -> str or bool:
-    result = get_data()
-    request = request.lower().replace(',', '').replace('?', '').replace('!', '').replace(' ', '')
-    for row in result['values']:
-        if row[0].lower().replace(',', '').replace('?', '').replace('!', '').replace(' ', '') == request:
-            return row[1]
-    return False
+async def give_access_sheet(email: str) -> None:
+    agc = await agcm.authorize()
+    await agc.insert_permission(
+        file_id = SPREADSHEET_ID,
+        value = email,
+        role = 'writer',
+        perm_type = 'user',
+        notify = True
+    )

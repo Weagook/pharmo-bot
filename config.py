@@ -16,7 +16,12 @@ LIST_PRES = os.listdir(SOURCE_DIR)
 message_pres = create_message_presentation()
 
 CREDENTIALS_FILE = 'credentials.json' 
-spreadsheetId = '18Pps6sDbv4AqDyy2QyXLrW1Ext4Aun8G9eAN6roQf6M'
-sheetId = 0 
+SCOPES = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+    ]
+SPREADSHEET_NAME = 'Вопросы и ответы'
+SPREADSHEET_ID = '18Pps6sDbv4AqDyy2QyXLrW1Ext4Aun8G9eAN6roQf6M'
 
 
