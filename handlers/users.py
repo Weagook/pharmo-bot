@@ -5,69 +5,51 @@ from create_bot import dp, bot, keyboards
 from utils import sheets
 from states import models 
 import os
-from config import (
-    SOURCE_DIR, LIST_PRES, MANAGER_ID,
-    LIST_PRES_LORE, LIST_PRES_PEDIATRICS, LIST_PRES_THERAPY,
-    LIST_PRES_INSTRUCTION, message_pres_lore, message_pres_pediatrics,
-    message_pres_therapy, message_source_pres, message_pres_instr
-)
+from config import MANAGER_ID, MESSAGE_SOURCE, PRES_DIRS, LIST_FILES
 
 
-async def launch(message: types.Message):
-    try:
+async def launch(message: types.Message, state: FSMContext):
+    if state:
         await state.finish()
-    except NameError:
-        pass
     await message.answer('Для взаимодействия с нашим умным\nботом нажмите на интересующий Вас\nпункт меню ниже', reply_markup=keyboards['main_keyboard'])
 
 async def message_controller(message: types.Message):
     if message.text == 'Задать вопрос эксперту':
         await models.KnowledgeBase.ENTRY_STATE.set()
-        await message.answer('Задайте свой вопрос, я вас внимательно слушаю', reply_markup=keyboards['callback_getans_kb'])
+        await message.answer('Задайте свой вопрос, я вас внимательно слушаю', reply_markup=keyboards['back_kb'])
     elif message.text == 'Материалы':
         await message.answer('Выберите категорию', reply_markup=keyboards['material_kb'])
     elif message.text == 'PO Talks':
         await message.answer('Ведущие инфекционисты, педиатры и отоларингологи:\nёмко и по делу о мифах, клинической базе\nи опыте применения Полиоксидония', reply_markup=keyboards['talks_kb'])
     elif message.text == 'Инструкции':
-        await message.answer(message_pres_instr, reply_markup=keyboards['instruction_kb'])
+        await message.answer(MESSAGE_SOURCE['instructions'], reply_markup=keyboards['instruction_kb'])
         
 
 async def callback_controller(callback: types.CallbackQuery):
+    exam = [
+        callback.data.startswith('materials'),
+        callback.data.startswith('therapy'),
+        callback.data.startswith('pediatrics'),
+        callback.data.startswith('lore'),
+        callback.data.startswith('instruction')
+    ]
+    
     if callback.data == 'research':
         await bot.send_message(chat_id=callback.message.chat.id, text='Выберите раздел', reply_markup=keyboards['research_kb'])
     elif callback.data == 'present':
-        await bot.send_message(chat_id=callback.message.chat.id, text=message_source_pres, reply_markup=keyboards['present_kb'])
+        await bot.send_message(chat_id=callback.message.chat.id, text=MESSAGE_SOURCE['materials'], reply_markup=keyboards['present_kb'])
     elif callback.data == 'lore':
-        await bot.send_message(chat_id=callback.message.chat.id, text=message_pres_lore, reply_markup=keyboards['lore_kb'])
+        await bot.send_message(chat_id=callback.message.chat.id, text=MESSAGE_SOURCE['lore'], reply_markup=keyboards['lore_kb'])
     elif callback.data == 'pediatrics':
-        await bot.send_message(chat_id=callback.message.chat.id, text=message_pres_pediatrics, reply_markup=keyboards['pediatrics_kb'])
+        await bot.send_message(chat_id=callback.message.chat.id, text=MESSAGE_SOURCE['pediatrics'], reply_markup=keyboards['pediatrics_kb'])
     elif callback.data == 'therapy':
-        await bot.send_message(chat_id=callback.message.chat.id, text=message_pres_therapy, reply_markup=keyboards['therapy_kb'])
-    elif callback.data.startswith('presentation_'):
+        await bot.send_message(chat_id=callback.message.chat.id, text=MESSAGE_SOURCE['therapy'], reply_markup=keyboards['therapy_kb'])
+    elif any(exam):
+        category = callback.data[:-2]
+        index_doc = int(callback.data[-1])-1
         await bot.send_document(
             chat_id=callback.message.chat.id,
-            document=InputFile(os.path.join(os.path.join(SOURCE_DIR, 'materials'), LIST_PRES[int(callback.data[-1])-1]))
-        )
-    elif callback.data.startswith('therapy_'):
-        await bot.send_document(
-            chat_id=callback.message.chat.id,
-            document=InputFile(os.path.join(os.path.join(SOURCE_DIR, 'therapy'), LIST_PRES_THERAPY[int(callback.data[-1])-1]))
-        )
-    elif callback.data.startswith('pediatrics_'):
-        await bot.send_document(
-            chat_id=callback.message.chat.id,
-            document=InputFile(os.path.join(os.path.join(SOURCE_DIR, 'pediatrics'), LIST_PRES_PEDIATRICS[int(callback.data[-1])-1]))
-        )
-    elif callback.data.startswith('lore_'):
-        await bot.send_document(
-            chat_id=callback.message.chat.id,
-            document=InputFile(os.path.join(os.path.join(SOURCE_DIR, 'lore'), LIST_PRES_LORE[int(callback.data[-1])-1]))
-        )
-    elif callback.data.startswith('instruction_'):
-        await bot.send_document(
-            chat_id=callback.message.chat.id,
-            document=InputFile(os.path.join(os.path.join(SOURCE_DIR, 'instructions'), LIST_PRES_INSTRUCTION[int(callback.data[-1])-1]))
-        )
+            document=InputFile(os.path.join(PRES_DIRS[category], LIST_FILES[category][index_doc])))
 
 async def getting_question(message: types.Message, state: FSMContext):
     if message.text == 'Назад':
@@ -81,24 +63,20 @@ async def getting_question(message: types.Message, state: FSMContext):
             await bot.send_message(chat_id=MANAGER_ID, text=f'[Клиент {message.from_user.id}]: {message.text}')
     await state.finish()
     
-async def giveAccesSheet(message: types.Message):
+async def giveAccesSheet(message: types.Message, state: FSMContext):
     if message.from_user.id == MANAGER_ID:
-        try:
+        if state:
             await state.finish()
-        except NameError:
-            pass
         await message.answer('Пожалуйста, напишите google почту пользователя, которому нужно выдать доступ. Пример: test_company@gmail.com')
         await models.GiveAccessSheet.ENTRY_STATE.set()
 
-async def collection_email_access(message: types.Message):
+async def collection_email_access(message: types.Message, state: FSMContext):
     email = message.text.lower().replace(' ', '')
     if email.endswith('@gmail.com'):
+        if state:
+            await state.finish()
         await sheets.give_access_sheet(email)
         await message.answer('Доступ выдан!')
-        try:
-            await state.finish()
-        except NameError:
-            pass
     else:
         await message.answer('Неккоретный email. Попробуйте еще раз.')
 
