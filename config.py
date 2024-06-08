@@ -10,7 +10,7 @@ def create_message_presentation(path) -> str:
     return message_presentation
 
 TOKEN = os.environ.get('TOKEN')
-MANAGER_ID = 1373643498
+MANAGER_ID = os.environ.get('MANAGER_ID')
 
 # Пути и файлы
 MAIN_DIR = os.getcwd()
